@@ -1,8 +1,9 @@
-# Proyecto de IA: Generación de niveles de plataformas — Estado de Avance (v2)
+# Proyecto de IA: Generación de niveles de plataformas — Estado de Avance (v3)
 
-Código **C++17 para Linux**. Conserva la lectura de instancias, el menú, el
-constructor inicial y el evaluador de la versión anterior. **Esta versión añade
-verificación geométrica de saltos, colisiones y alcanzabilidad por BFS**.
+Código **C++17 para Linux**. Esta versión conserva el lector de instancias,
+menú, evaluador, verificación de saltos, colisiones y BFS de la versión 2.
+**Novedad v3:** el generador inicial es aleatorio y no adapta las posiciones ni
+las alturas al objetivo `max`/`min`.
 
 ## Compilar y ejecutar
 
@@ -21,9 +22,11 @@ make test
 make clean
 ```
 
-`make test` ejecuta seis casos oficiales, pruebas de menú/lectura y **19 pruebas
-geométricas** independientes del generador. `make clean` borra binario y objetos,
-pero mantiene `salidas/`.
+`make test` ejecuta los seis casos oficiales, pruebas de menú/lectura,
+**19 verificaciones de movimiento/colisión/BFS** y **30 verificaciones del
+generador aleatorio** (incluye seis instancias × cuatro semillas, casos extremos,
+reproducibilidad y ausencia de dependencia del objetivo). `make clean` borra
+binario y objetos, pero mantiene `salidas/`.
 
 ## Representación
 
@@ -91,17 +94,44 @@ Se mantienen los cálculos previos:
 
 La medida de linealidad y el peso de 0.5 son propuestas del proyecto.
 
-**Limitación importante**: el constructor inicial anterior distribuye bloques
-espaciados y peligros al azar, **sin garantizar rutas jugables**. Los seis casos
-oficiales con semilla 42 arrojan `NO COMPLETABLE` bajo el nuevo validador.
-Esto **no es una falla del BFS**; el generador deberá mejorarse después.
+### Generación inicial aleatoria (v3)
 
-En particular, para las instancias **2 y 5**: 50 plataformas menos 35 peligros
-implican 15 apoyos seguros. Si inicio=columna 0 y meta=149 y cada arista avanza
-como máximo 6 columnas, ni siquiera un encadenamiento ideal de 14 saltos alcanza
-149 columnas (`14*6=84`). Será necesario **revisar la posición de inicio/meta,
-el diseño de la ruta o los supuestos sobre peligros**, y acordarlo con el ayudante.
-No se debe presentar este constructor como generador de niveles completables.
+`GeneradorInicial.cpp` utiliza `std::mt19937` con la semilla recibida:
+
+1. Reserva las columnas **0 y 149** para inicio y meta (hipótesis provisional
+   del proyecto, pendiente de confirmar con el ayudante).
+2. Elige **P − 2 columnas interiores sin reemplazo**, barajando las 148 candidatas.
+3. Asigna a cada plataforma una **altura aleatoria entre 0 y 14**, inclusive.
+4. Baraja los apoyos interiores y sitúa **E enemigos y O obstáculos** sin
+   superposición y dejando inicio y meta seguros.
+5. Valida las restricciones estructurales. **No** garantiza completabilidad.
+
+La inicialización **no consulta el objetivo de linealidad**: dos instancias con
+iguales cantidades y la misma semilla, pero objetivos `max` y `min`, producen el
+mismo nivel. El objetivo solamente influye en `Evaluador.cpp`.
+
+Para reproducir un resultado utiliza, por ejemplo:
+
+```bash
+./plataformas instancias.txt --id 1 --semilla 42
+```
+
+Cambiar la semilla permite obtener otras distribuciones. Con la misma semilla e
+instancia los resultados son idénticos en una misma compilación/plataforma.
+
+**Limitación importante:** se generan niveles estructuralmente correctos, pero
+sin construir primero una ruta segura. Para la semilla 42, los seis casos
+oficiales se reportan como `NO COMPLETABLE` bajo el validador del proyecto.
+Esto **no implica un fallo del BFS** ni que se haya implementado simulated
+annealing. La completabilidad se informa por separado en el reporte.
+
+En particular, para las instancias **2 y 5**, 50 plataformas menos 35 peligros
+implican solamente 15 apoyos seguros; la instancia **6** deja 25. Con inicio
+fijo en columna 0 y meta en 149, el avance de un salto limitado a seis columnas
+requiere **al menos 26 apoyos seguros**. Esas tres instancias son incompatibles
+con esos supuestos simultáneamente. Se debe consultar si procede otra elección
+de inicio/meta o una interpretación distinta de peligros, **sin modificar
+arbitrariamente las reglas**.
 
 Los reportes `salidas/instancia_ID.txt` indican:
 
@@ -124,15 +154,15 @@ Los reportes `salidas/instancia_ID.txt` indican:
 | **`include/Alcanzabilidad.hpp`, `src/Alcanzabilidad.cpp`** | **Grafo implícito y BFS** |
 | `include/Salida.hpp`, `src/Salida.cpp` | Reportes y tablero |
 | `src/main.cpp` | Menú y coordinación |
-| `tests/prueba_movimiento.cpp` | 19 pruebas geométricas específicas |
+| `tests/prueba_movimiento.cpp` | 19 pruebas de movimiento, colisiones y BFS |
+| `tests/prueba_generador.cpp` | 30 verificaciones del generador aleatorio |
 | `tests/pruebas.sh` | Seis casos oficiales y lectura |
 
 ## Trabajo próximo
 
-1. Corregir la **generación de solución inicial** para construir primero una ruta
-   segura que el BFS acepte, y después colocar el resto de elementos. Es necesario
-   resolver con el ayudante el problema de los apoyos seguros y la longitud total.
-2. Diseñar movimientos de vecindario y una política de factibilidad.
+1. Confirmar con el ayudante los supuestos que impiden completar ciertas
+   instancias (extremos, comportamiento de peligros).
+2. Diseñar movimientos de vecindario y política de factibilidad para SA.
 3. Implementar **simulated annealing** y realizar experimentos reproducibles.
 4. Registrar la retroalimentación del Estado de Avance para la Entrega 2.
 

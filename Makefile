@@ -4,6 +4,7 @@ FUENTES := $(wildcard src/*.cpp)
 OBJETOS := $(patsubst src/%.cpp,build/%.o,$(FUENTES))
 EJECUTABLE := plataformas
 TEST_EJECUTABLE := build/prueba_movimiento
+TEST_GENERADOR := build/prueba_generador
 TEST_OBJETOS := $(filter-out build/main.o,$(OBJETOS))
 
 .PHONY: all clean test
@@ -19,9 +20,13 @@ build/%.o: src/%.cpp $(wildcard include/*.hpp)
 $(TEST_EJECUTABLE): tests/prueba_movimiento.cpp $(TEST_OBJETOS)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-test: $(EJECUTABLE) $(TEST_EJECUTABLE)
+$(TEST_GENERADOR): tests/prueba_generador.cpp $(TEST_OBJETOS)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+test: $(EJECUTABLE) $(TEST_EJECUTABLE) $(TEST_GENERADOR)
 	bash tests/pruebas.sh
 	./$(TEST_EJECUTABLE)
+	./$(TEST_GENERADOR)
 
 clean:
 	rm -rf build $(EJECUTABLE)

@@ -3,49 +3,50 @@
 #include <algorithm>
 #include <numeric>
 #include <random>
-#include <stdexcept>
 #include <vector>
 
 Nivel generarInicial(const Instancia& instancia, std::uint32_t semilla) {
     validarInstancia(instancia);
+
     Nivel nivel;
-    std::vector<int> columnas;
+    std::mt19937 rng(semilla);
+
+    // Reservamos dos apoyos para el inicio y la meta. Su posicion en las
+    // columnas extremas es una hipotesis del modelo, NO una regla oficial.
+    nivel.columnaInicio = 0;
+    nivel.columnaMeta = ANCHO_NIVEL - 1;
+    std::vector<int> columnas = {nivel.columnaInicio, nivel.columnaMeta};
     columnas.reserve(instancia.plataformas);
 
-    // Distribución determinista sobre toda la anchura. Los extremos son
-    // plataformas de inicio y meta. Para 2 <= P <= 150 no hay duplicados.
-    for (int i = 0; i < instancia.plataformas; ++i) {
-        const int x = (i * (ANCHO_NIVEL - 1) + (instancia.plataformas - 1) / 2) /
-                      (instancia.plataformas - 1);
-        if (!columnas.empty() && columnas.back() == x) {
-            throw std::logic_error("generacion de columnas duplicadas");
-        }
-        columnas.push_back(x);
+    // Seleccion uniforme de columnas interiores sin reemplazo. Ni el numero
+    // de columna ni la altura dependen del objetivo (max/min linealidad).
+    std::vector<int> disponibles(ANCHO_NIVEL - 2);
+    std::iota(disponibles.begin(), disponibles.end(), 1);
+    std::shuffle(disponibles.begin(), disponibles.end(), rng);
+    columnas.insert(columnas.end(), disponibles.begin(),
+                    disponibles.begin() + (instancia.plataformas - 2));
 
-        // Las alturas son propuestas iniciales, NO optimizadas.
-        // Max: perfil horizontal. Min: alternancia moderada entre filas.
-        const int y = instancia.objetivo == ObjetivoLinealidad::Maximizar
-                          ? 4
-                          : (i % 2 == 0 ? 4 : 7);
-        nivel.alturaPlataforma[x] = y;
+    // Una altura independiente y aleatoria por plataforma. La ultima fila
+    // (15) se reserva como espacio para el personaje o peligro apoyado.
+    std::uniform_int_distribution<int> altura(0, ALTO_NIVEL - 2);
+    for (int x : columnas) {
+        nivel.alturaPlataforma[x] = altura(rng);
     }
-    nivel.columnaInicio = columnas.front();
-    nivel.columnaMeta = columnas.back();
 
-    // Reservamos inicio/meta y mezclamos plataformas intermedias para
-    // repartir peligros sin cambiar su cantidad ni solaparlos.
-    std::vector<int> apoyos(columnas.begin() + 1, columnas.end() - 1);
-    std::mt19937 rng(semilla);
+    // Los peligros tambien se distribuyen aleatoriamente, sin reemplazo.
+    // No pueden colocarse sobre inicio/meta, ni puede haber dos en un apoyo.
+    std::vector<int> apoyos(columnas.begin() + 2, columnas.end());
     std::shuffle(apoyos.begin(), apoyos.end(), rng);
-
-    std::size_t proximo = 0;
-    for (int k = 0; k < instancia.enemigos; ++k) {
-        nivel.peligro[apoyos.at(proximo++)] = Peligro::Enemigo;
+    std::size_t siguiente = 0;
+    for (int i = 0; i < instancia.enemigos; ++i) {
+        nivel.peligro[apoyos[siguiente++]] = Peligro::Enemigo;
     }
-    for (int k = 0; k < instancia.obstaculos; ++k) {
-        nivel.peligro[apoyos.at(proximo++)] = Peligro::Obstaculo;
+    for (int i = 0; i < instancia.obstaculos; ++i) {
+        nivel.peligro[apoyos[siguiente++]] = Peligro::Obstaculo;
     }
 
+    // Esta funcion garantiza estructura y conteos, no una ruta jugable.
+    // La comprobacion de completabilidad corresponde a Alcanzabilidad.cpp.
     validarEstructura(nivel);
     return nivel;
 }

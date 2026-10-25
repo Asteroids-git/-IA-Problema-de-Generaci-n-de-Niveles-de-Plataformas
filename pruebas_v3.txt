@@ -1,0 +1,61 @@
+bash tests/pruebas.sh
+OK: instancia 1
+OK: instancia 2
+OK: instancia 3
+OK: instancia 4
+OK: instancia 5
+OK: instancia 6
+Todas las pruebas automatizadas superadas.
+./build/prueba_movimiento
+OK: salto sin obstaculos hasta 4 columnas
+OK: salto simetrico a la izquierda
+OK: BFS en dos apoyos conectados
+OK: imposible saltar 7 columnas
+OK: BFS rechaza distancia excesiva
+OK: plataforma elevada 3 celdas alcanzable
+OK: plataforma 5 celdas mas alta inalcanzable
+OK: caida vertical a destino inferior
+OK: enemigo inmediato bloquea despegue 1x1
+OK: salto bajo evita techo que bloquea salto alto
+OK: pared lateral inmediata bloquea trayectorias
+OK: caida centrada cabe entre dos enemigos vecinos
+OK: destino ocupado por obstaculo no es apoyo seguro
+OK: plataforma aislada NO impide completabilidad
+OK: BFS distingue soportes seguros de alcanzados
+OK: BFS recupera ruta de columnas
+OK: BFS encadena saltos 10-14-18-22
+OK: caminar sobre apoyos adyacentes al mismo nivel
+OK: movimiento directo considera caminar
+Todas las 19 pruebas geometricas superadas.
+./build/prueba_generador
+OK: conteos correctos para instancia 1
+OK: conteos correctos para instancia 1
+OK: conteos correctos para instancia 1
+OK: conteos correctos para instancia 1
+OK: conteos correctos para instancia 2
+OK: conteos correctos para instancia 2
+OK: conteos correctos para instancia 2
+OK: conteos correctos para instancia 2
+OK: conteos correctos para instancia 3
+OK: conteos correctos para instancia 3
+OK: conteos correctos para instancia 3
+OK: conteos correctos para instancia 3
+OK: conteos correctos para instancia 4
+OK: conteos correctos para instancia 4
+OK: conteos correctos para instancia 4
+OK: conteos correctos para instancia 4
+OK: conteos correctos para instancia 5
+OK: conteos correctos para instancia 5
+OK: conteos correctos para instancia 5
+OK: conteos correctos para instancia 5
+OK: conteos correctos para instancia 6
+OK: conteos correctos para instancia 6
+OK: conteos correctos para instancia 6
+OK: conteos correctos para instancia 6
+OK: misma instancia y semilla producen el mismo nivel
+OK: cambiar la semilla cambia la disposicion
+OK: la solucion inicial NO depende de max/min linealidad
+OK: evaluacion del generador conserva cantidades exactas
+OK: conteos correctos para instancia 8
+OK: conteos correctos para instancia 9
+Todas las 30 verificaciones del generador superadas.
