@@ -1,0 +1,32 @@
+GUIA BREVE - PRESENTACION DE ESTADO DE AVANCE
+
+MOSTRAR COMO IMPLEMENTADO
+- Lector de instancias de texto: 6 casos, menu, seleccion por ID.
+- Representacion: vector de 150 alturas y peligros sobre apoyos.
+- Generador inicial: cumple conteos y restricciones estructurales.
+- Evaluacion: error de cantidades, linealidad y costo.
+- Movimiento: cuatro parabolas, personaje 1x1, caida vertical opcional,
+  comprobacion analitica de colisiones.
+- Grafo implícito por apoyos seguros y BFS inicio-meta.
+- Test unitario: make test; incluye saltos, techos, peligros, caida,
+  plataforma aislada y reconstruccion de camino.
+
+NO PRESENTAR COMO IMPLEMENTADO
+- Solucion inicial garantizadamente completable.
+- Simulated annealing operativo.
+- Experimentos comparativos de metaheuristicas.
+
+LIMITACION A EXPLICAR
+- Los seis niveles actuales, aunque estructuralmente validos y con conteos
+  exactos, no son completables con el modelo de saltos definido.
+- El constructor provisional coloca inicio en 0 y meta en 149.
+- Con 50 plataformas y 35 peligros solo quedan 15 apoyos seguros: con saltos
+  maximos de 6, no se alcanza la separacion de 149 en una cadena de apoyos.
+- Proximo trabajo: redisenar constructor de ruta, acordar inicio/meta y
+  despues implementar SA. Mantener un registro de la retroalimentacion.
+
+ORDEN DE DEMOSTRACION
+1. make
+2. ./plataformas instancias.txt --id 1 --semilla 42
+3. Mostrar las lineas de Completabilidad y apoyos alcanzados.
+4. make test (19 pruebas especificas mas 6 instancias).

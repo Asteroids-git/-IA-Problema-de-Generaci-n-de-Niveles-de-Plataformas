@@ -1,0 +1,9 @@
+# Archivo de instancias oficiales (tabla de la pagina 2 del PDF de Instancias)
+# Formato: ID PLATAFORMAS ENEMIGOS OBSTACULOS LINEALIDAD
+# Una instancia por linea. LINEALIDAD = max | min.
+1 75 20 15 max
+2 50 20 15 max
+3 75 20 15 min
+4 100 20 15 min
+5 50 20 15 min
+6 75 15 35 min
