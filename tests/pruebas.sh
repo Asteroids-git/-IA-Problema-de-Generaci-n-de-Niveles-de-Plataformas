@@ -16,6 +16,16 @@ printf '2\n0\n' | ./plataformas instancias.txt > /tmp/plataformas_menu_$$.log
 grep -q 'INSTANCIA 2' /tmp/plataformas_menu_$$.log
 rm -f /tmp/plataformas_menu_$$.log
 
+# El modo SA conserva la entrada por ID y registra una evaluacion por vecino.
+salida=$(./plataformas instancias.txt --id 1 --sa --semilla 4294967295 --iteraciones 4 \
+  --temperatura-inicial 0.1 --temperatura-final 0.01 --directorio-salidas build/salidas-prueba)
+grep -q 'SA iteraciones=4 | evaluaciones=5' <<< "$salida"
+test -s build/salidas-prueba/instancia_1_sa_4294967295.txt
+if ./plataformas instancias.txt --id 1 --sa --temperatura-final 1 >/dev/null 2>&1; then
+  echo 'ERROR: SA no detecto temperaturas incompatibles'
+  exit 1
+fi
+
 # Las entradas inválidas deben fallar con un error (sin segfault).
 archivo_invalido="/tmp/plataformas_instancias_invalidas_$$.txt"
 printf '1 75 20 15 max\n1 50 20 15 min\n' > "$archivo_invalido"

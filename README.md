@@ -1,173 +1,68 @@
-# Proyecto de IA: Generación de niveles de plataformas — Estado de Avance (v3)
+# Versión experimental ajustada tras retroalimentación del avance
 
-Código **C++17 para Linux**. Esta versión conserva el lector de instancias,
-menú, evaluador, verificación de saltos, colisiones y BFS de la versión 2.
-**Novedad v3:** el generador inicial es aleatorio y no adapta las posiciones ni
-las alturas al objetivo `max`/`min`.
+Este repositorio es una COPIA de trabajo del código V3 presentado en octubre de 2026.
+Los cambios se basan en el relato de las seis indicaciones del ayudante, y deben validarse
+con más escenarios y pruebas antes de considerarse la versión de entrega final.
 
-## Compilar y ejecutar
+## Cambios realmente implementados en esta copia
+- Inicio en 0..4 y meta en 145..149; separación >=141. Decisión de diseño.
+- Bloques permitidos también en fila 15; NO son apoyo caminable y NO admiten peligro encima.
+- Las cantidades del generador inicial SIGUEN siendo exactas por diseño.
 
-```bash
-make
-./plataformas
+## Modelo de movimiento y alcanzabilidad
+
+- El personaje de 1×1 parte y termina centrado en un apoyo. Los saltos prueban
+  elevaciones de 1 a 4 celdas y avances de hasta 6 columnas. La elevación se mide
+  desde los pies al despegar. La caída de borde se evalúa por separado. El personaje
+  camina hasta que su caja deja de solaparse con el apoyo y cae desde esa altura
+  con velocidad vertical inicial cero. El límite horizontal incluye ese primer paso.
+- En el aire, la aceleración vertical es constante en tiempo normalizado. El avance
+  horizontal usa un perfil cosenoidal de velocidad continua, con inicio y duración
+  ajustables y rapidez máxima de 6 celdas por unidad de ese tiempo. Se ensayan
+  intervalos en octavos del tiempo de vuelo y perfiles alineados con el borde.
+  El barrido continuo de la caja comprueba plataformas, peligros y límites.
+- Se permite aterrizar exactamente en el ápice de un salto de altura máxima sobre
+  una plataforma sólida si el cuerpo alcanza su borde o superficie con trayectoria
+  libre. El personaje puede terminar de centrarse ya apoyado. Tocar un borde sin
+  penetración está permitido. Un pisotón requiere que los pies lleguen desde arriba
+  con velocidad vertical descendente y solapamiento horizontal positivo. Puede
+  ocurrir sobre un enemigo intermedio y el descenso continúa sin rebote.
+- Cada enemigo aplastado desaparece durante esa ruta. El verificador precalcula
+  los requisitos y efectos de cada movimiento. Las cotas por columna pueden
+  certificar la alcanzabilidad y la longitud mínima. Cuando discrepan, A* distingue
+  estados por columna y enemigos eliminados y descarta estados dominados. Las aristas
+  potenciales incluyen movimientos que requieren eliminaciones previas.
+
+## Simulated Annealing
+
+```sh
+./plataformas instancias.txt --sa --id 4 --semilla 42 --iteraciones 3000
+./plataformas --help
 ```
 
-El menú permite seleccionar múltiples instancias del archivo `instancias.txt`.
-Una instancia por línea: `id plataformas enemigos obstaculos max|min`.
-También se puede ejecutar directamente:
+El modo `--sa` valida cada vecino con el verificador exacto y devuelve el mejor
+nivel factible evaluado, si lo encuentra. La ejecución sin esa opción muestra
+el nivel del generador inicial. Los reportes de SA incluyen la semilla en el
+nombre. La función objetivo, los parámetros y las primeras mediciones se
+describen en [experimentos](experimentos/README.md).
 
-```bash
-./plataformas instancias.txt --id 3 --semilla 42
-make test
-make clean
+## Limitaciones conocidas
+
+- Los pesos y el enfriamiento son parámetros preliminares pendientes de calibración.
+- La familia de trayectorias tiene alturas y ajustes de tiempo discretos, avance
+  monótono dentro de cada movimiento y enemigos estáticos. La búsqueda es exacta
+  para esa familia y puede crecer exponencialmente con enemigos relevantes cuyas
+  eliminaciones no se puedan ordenar por inclusión.
+
+## Compilar y probar
 ```
-
-`make test` ejecuta los seis casos oficiales, pruebas de menú/lectura,
-**19 verificaciones de movimiento/colisión/BFS** y **30 verificaciones del
-generador aleatorio** (incluye seis instancias × cuatro semillas, casos extremos,
-reproducibilidad y ausencia de dependencia del objetivo). `make clean` borra
-binario y objetos, pero mantiene `salidas/`.
-
-## Representación
-
-- Tablero de **150 columnas por 16 filas**; origen `(0,0)` abajo a la izquierda.
-- `alturaPlataforma[c]`: `-1` si está vacía o fila entera de una plataforma.
-  La representación permite como máximo una plataforma por columna.
-- `peligro[c]`: ninguno, enemigo u obstáculo, ubicado una celda sobre el bloque.
-- Inicio y meta son plataformas seguras. Por ahora, el generador usa las
-  columnas extremas 0 y 149; **esta es una decisión provisional propia**.
-- Enemigos y obstáculos son peligros estáticos, ambos impiden entrar en su celda.
-
-## Movimiento y completabilidad (modelo simplificado adoptado)
-
-El personaje es un **rectángulo de 1×1 celda**. Se evalúan apoyos y paradas
-horizontales en **centros de columnas**. El movimiento no simula velocidades,
-aceleraciones, ni habilidad del jugador.
-
-Se consideran **cuatro saltos** con alturas máximas `h = 4, 3, 2, 1` y alcance a
-la misma altura `r(h) = 1.5*h`. La altura de los pies a distancia horizontal `d`
-respecto del despegue es:
-
-```text
-pies(d) = sueloOrigen + 4*h*(d/r)*(1-d/r)
-```
-
-Una trayectoria candidata llega al **centro de la columna destino** con los pies
-al menos a la altura del apoyo de destino; desde ahí puede detener horizontalmente
-el movimiento y **caer verticalmente** hasta la superficie. El desplazamiento
-horizontal total no debe superar **6 celdas**. También puede bajar siguiendo la
-parábola hasta el centro de la columna de destino. Se admite el contacto exacto
-entre bordes, pero **no** que el personaje penetre plataformas o peligros.
-
-### Detección de colisiones sin simulación de tiempos
-
-`Movimiento.cpp` calcula mínimos y máximos de la parábola en cada intervalo de
-solapamiento horizontal entre la caja 1×1 y la celda potencialmente ocupada.
-Como la parábola es continua, esto detecta una intersección de área positiva
-**para cada una de las trayectorias discretizadas**, sin muestrear pasos de tiempo.
-Las trayectorias se descartan si el cuerpo sale verticalmente del tablero.
-
-Cuando se detiene en el centro de una columna segura, la caída vertical es
-libre porque hay como máximo una plataforma en dicha columna y no existe peligro
-encima de ella. El descenso termina en el primer apoyo de esa columna.
-
-`Alcanzabilidad.cpp` construye conexiones entre apoyos seguros a lo sumo a seis
-columnas de distancia. Existe una arista dirigida si se puede caminar entre dos
-apoyos adyacentes iguales, o si algún salto es válido. **BFS** busca una ruta
-desde la plataforma inicial hasta la meta. No exige que todos los apoyos sean
-alcanzables; las plataformas aisladas son posibles.
-
-> **Alcance de la garantía:** el programa verifica la jugabilidad únicamente
-> bajo **estas reglas simplificadas**. La elección de alturas 1–4, la relación
-> `r(h)=1.5h`, los centros de columnas, el tamaño 1×1 y la caída vertical son
-> decisiones del modelo y deben justificarse. No prueban jugabilidad en un motor
-> de videojuego real ni abarcan todos los saltos continuos imaginables.
-
-## Evaluación y generación inicial
-
-Se mantienen los cálculos previos:
-
-- `error = |P-Psol| + |E-Esol| + |O-Osol|`.
-- `L = 1 - sum(|h_siguiente-h_anterior|)/(15*(Psol-1))`, para al menos dos apoyos.
-- `costo = error + 0.5*(1-L)` si la instancia maximiza linealidad;
-  `costo = error + 0.5*L` si la minimiza.
-
-La medida de linealidad y el peso de 0.5 son propuestas del proyecto.
-
-### Generación inicial aleatoria (v3)
-
-`GeneradorInicial.cpp` utiliza `std::mt19937` con la semilla recibida:
-
-1. Reserva las columnas **0 y 149** para inicio y meta (hipótesis provisional
-   del proyecto, pendiente de confirmar con el ayudante).
-2. Elige **P − 2 columnas interiores sin reemplazo**, barajando las 148 candidatas.
-3. Asigna a cada plataforma una **altura aleatoria entre 0 y 14**, inclusive.
-4. Baraja los apoyos interiores y sitúa **E enemigos y O obstáculos** sin
-   superposición y dejando inicio y meta seguros.
-5. Valida las restricciones estructurales. **No** garantiza completabilidad.
-
-La inicialización **no consulta el objetivo de linealidad**: dos instancias con
-iguales cantidades y la misma semilla, pero objetivos `max` y `min`, producen el
-mismo nivel. El objetivo solamente influye en `Evaluador.cpp`.
-
-Para reproducir un resultado utiliza, por ejemplo:
-
-```bash
+make clean && make && make test
 ./plataformas instancias.txt --id 1 --semilla 42
 ```
 
-Cambiar la semilla permite obtener otras distribuciones. Con la misma semilla e
-instancia los resultados son idénticos en una misma compilación/plataforma.
+El benchmark reproducible y el análisis de rendimiento están en [benchmarks](benchmarks/README.md).
 
-**Limitación importante:** se generan niveles estructuralmente correctos, pero
-sin construir primero una ruta segura. Para la semilla 42, los seis casos
-oficiales se reportan como `NO COMPLETABLE` bajo el validador del proyecto.
-Esto **no implica un fallo del BFS** ni que se haya implementado simulated
-annealing. La completabilidad se informa por separado en el reporte.
-
-En particular, para las instancias **2 y 5**, 50 plataformas menos 35 peligros
-implican solamente 15 apoyos seguros; la instancia **6** deja 25. Con inicio
-fijo en columna 0 y meta en 149, el avance de un salto limitado a seis columnas
-requiere **al menos 26 apoyos seguros**. Esas tres instancias son incompatibles
-con esos supuestos simultáneamente. Se debe consultar si procede otra elección
-de inicio/meta o una interpretación distinta de peligros, **sin modificar
-arbitrariamente las reglas**.
-
-Los reportes `salidas/instancia_ID.txt` indican:
-
-- Cantidades, linealidad y costo.
-- Estado de restricciones estructurales.
-- `COMPLETABLE` o `NO COMPLETABLE` **según este modelo**.
-- Número de apoyos seguros, conexiones dirigidas y apoyos alcanzados.
-- Camino de columnas cuando existe.
-
-## Estructura de archivos
-
-| Archivo | Responsabilidad |
-|---|---|
-| `include/Nivel.hpp`, `src/Nivel.cpp` | Representación y estructura |
-| `include/Instancia.hpp`, `src/Instancia.cpp` | Datos y validación de instancia |
-| `include/LectorInstancias.hpp`, `src/LectorInstancias.cpp` | Lector de texto |
-| `include/GeneradorInicial.hpp`, `src/GeneradorInicial.cpp` | Solución inicial |
-| `include/Evaluador.hpp`, `src/Evaluador.cpp` | Costo objetivo |
-| **`include/Movimiento.hpp`, `src/Movimiento.cpp`** | **Saltos, caminata, colisiones** |
-| **`include/Alcanzabilidad.hpp`, `src/Alcanzabilidad.cpp`** | **Grafo implícito y BFS** |
-| `include/Salida.hpp`, `src/Salida.cpp` | Reportes y tablero |
-| `src/main.cpp` | Menú y coordinación |
-| `tests/prueba_movimiento.cpp` | 19 pruebas de movimiento, colisiones y BFS |
-| `tests/prueba_generador.cpp` | 30 verificaciones del generador aleatorio |
-| `tests/pruebas.sh` | Seis casos oficiales y lectura |
-
-## Trabajo próximo
-
-1. Confirmar con el ayudante los supuestos que impiden completar ciertas
-   instancias (extremos, comportamiento de peligros).
-2. Diseñar movimientos de vecindario y política de factibilidad para SA.
-3. Implementar **simulated annealing** y realizar experimentos reproducibles.
-4. Registrar la retroalimentación del Estado de Avance para la Entrega 2.
-
-## Uso de IA
-
-ChatGPT ayudó a definir simplificaciones, redactar documentación, proponer y
-programar los módulos y casos de prueba. Se debe declarar este uso según las
-reglas académicas, comprender las decisiones e inspeccionar los resultados.
+## Diferencia con la formulación del estado del arte
+El informe previo proponía segmentos de longitud variable/personaje puntual;
+este código mantiene 1 bloque por columna/personaje de 1x1, y evalúa además
+linealidad. El informe final debe describir fielmente esta representación.
