@@ -1,4 +1,5 @@
 #include "Salida.hpp"
+#include "SimulatedAnnealing.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -24,7 +25,8 @@ char representarCelda(const Nivel& nivel, int x, int y) {
 
 void escribirReporte(std::ostream& salida, const Instancia& instancia,
                     const Nivel& nivel, const Evaluacion& ev,
-                    const ResultadoAlcanzabilidad& ruta, unsigned semilla) {
+                    const ResultadoAlcanzabilidad& ruta, unsigned semilla,
+                    const EstadisticasSA* stats) {
     salida << "INSTANCIA " << instancia.id << " | linealidad "
            << nombreObjetivo(instancia.objetivo) << " | semilla " << semilla << '\n';
     salida << "Solicitado: plataformas=" << instancia.plataformas
@@ -40,9 +42,9 @@ void escribirReporte(std::ostream& salida, const Instancia& instancia,
            << " | costo total=" << ev.costoTotal << '\n';
     salida << "Restricciones estructurales: VALIDAS\n";
     salida << "Completabilidad: " << (ruta.completable ? "COMPLETABLE" : "NO COMPLETABLE")
-           << " (segun modelo discreto de saltos/BFS)\n";
-    salida << "Apoyos seguros=" << ruta.apoyosSeguros
-           << " | aristas dirigidas=" << ruta.movimientosValidos
+           << " (segun modelo de movimiento/BFS)\n";
+    salida << "Apoyos utilizables (incluye enemigos)=" << ruta.apoyosSeguros
+           << " | aristas dirigidas potenciales=" << ruta.movimientosValidos
            << " | apoyos alcanzados=" << ruta.apoyosAlcanzados << '\n';
     if (ruta.completable) {
         salida << "Ruta (columnas): ";
@@ -51,6 +53,21 @@ void escribirReporte(std::ostream& salida, const Instancia& instancia,
             salida << ruta.camino[i];
         }
         salida << '\n';
+    }
+
+    if (stats) {
+        const int pasos = ruta.completable ? static_cast<int>(ruta.camino.size()) - 1 : -1;
+        salida << "SA iteraciones=" << stats->iteraciones << " | evaluaciones=" << stats->evaluaciones
+               << " | factibles=" << stats->evaluacionesFactibles << " | con_error=" << stats->evaluacionesConError
+               << " | aceptadas=" << stats->aceptadas << " | peores_aceptadas=" << stats->empeoramientosAceptados
+               << " | primera_factible=" << stats->primeraFactible << " | seleccionada=" << stats->iteracionSeleccionada
+               << " | pasos=" << pasos << '\n'
+               << std::setprecision(6)
+               << "SA segundos=" << stats->segundos << " | verificador_segundos=" << stats->segundosVerificador
+               << " | verificador_max_ms=" << stats->maxMilisegundosVerificador << '\n'
+               << "SA progreso_inicial=" << stats->progresoInicial << " | progreso=" << ev.progreso
+               << " | linealidad_inicial=" << stats->linealidadInicial << " | linealidad=" << ev.linealidad
+               << " | costo_inicial=" << stats->costoInicial << " | costo=" << ev.costoTotal << '\n';
     }
 
     salida << "Leyenda: # plataforma, E enemigo, O obstaculo, I inicio, F fin, . vacio\n\n";
@@ -70,13 +87,13 @@ void escribirReporte(std::ostream& salida, const Instancia& instancia,
 
 std::string guardarReporte(const Instancia& instancia, const Nivel& nivel,
                            const Evaluacion& ev, const ResultadoAlcanzabilidad& ruta,
-                           unsigned semilla, const std::string& directorio) {
+                           unsigned semilla, const std::string& directorio, const EstadisticasSA* stats) {
     std::filesystem::create_directories(directorio);
-    const std::string rutaArchivo = directorio + "/instancia_" +
-        std::to_string(instancia.id) + ".txt";
+    const std::string sufijo = stats ? "_sa_" + std::to_string(semilla) : "";
+    const std::string rutaArchivo = directorio + "/instancia_" + std::to_string(instancia.id) + sufijo + ".txt";
     std::ofstream archivo(rutaArchivo);
     if (!archivo) throw std::runtime_error("no se pudo crear archivo de salida: " + rutaArchivo);
-    escribirReporte(archivo, instancia, nivel, ev, ruta, semilla);
+    escribirReporte(archivo, instancia, nivel, ev, ruta, semilla, stats);
     if (!archivo) throw std::runtime_error("fallo al escribir archivo de salida: " + rutaArchivo);
     return rutaArchivo;
 }

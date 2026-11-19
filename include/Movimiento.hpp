@@ -2,23 +2,39 @@
 
 #include "Nivel.hpp"
 
-// Movimiento simplificado ACORDADO para el avance (no motor de fisica):
-// - personaje de 1x1 celda, con pies en el borde superior del bloque;
-// - despegue y detencion horizontal en el centro de las columnas;
-// - alturas de salto h = 4,3,2,1 con r(h) = 1.5*h;
-// - parabola de los pies: y(d) = y0 + 4*h*(d/r)*(1-d/r);
-// - en la columna de destino se puede parar horizontalmente y caer;
-// - altura maxima 4, avance horizontal maximo 6;
-// - contacto con bordes admitido; penetracion de celdas prohibida.
-// Ninguna de estas simplificaciones constituye una regla fisica literal del PPT.
+#include <bitset>
+#include <vector>
 
-// Determina si existe uno de los cuatro saltos definidos que conecte
-// el centro de dos columnas con plataformas seguras y evite colisiones.
-bool saltoValido(const Nivel& nivel, int origen, int destino);
+constexpr int ALCANCE_MAXIMO_MOVIMIENTO = 6;
+using EnemigosAplastados = std::bitset<ANCHO_NIVEL>;
 
-// Caminar horizontalmente entre los centros de plataformas contiguas
-// a la misma altura, sin cruzar peligros.
-bool caminarValido(const Nivel& nivel, int origen, int destino);
+// Una trayectoria puede exigir que ciertos enemigos ya hayan desaparecido y
+// aplastar a otros durante el descenso. Cada bit identifica una columna.
+struct CondicionMovimiento {
+    EnemigosAplastados requiere;
+    EnemigosAplastados aplasta;
 
-// Retorna true si existe un movimiento directo (caminar o saltar).
-bool movimientoDirectoValido(const Nivel& nivel, int origen, int destino);
+    bool habilitada(const EnemigosAplastados& enemigos) const {
+        return (requiere & ~enemigos).none();
+    }
+};
+
+// Los movimientos parten de un apoyo centrado y terminan centrados. El salto
+// sube de 1 a 4 celdas y la caida empieza al perder el apoyo, sin ascenso.
+// Se permite aterrizar en el apice de altura maxima sobre una plataforma
+// solida al alcanzar su borde con trayectoria libre. El pisoton exige
+// velocidad vertical descendente y solapamiento horizontal al contacto.
+// Por defecto todos los enemigos estan vivos, incluido el del origen.
+bool saltoValido(const Nivel& nivel, int origen, int destino,
+                 const EnemigosAplastados& enemigos = {});
+bool caidaValida(const Nivel& nivel, int origen, int destino,
+                 const EnemigosAplastados& enemigos = {});
+bool caminarValido(const Nivel& nivel, int origen, int destino,
+                   const EnemigosAplastados& enemigos = {});
+bool movimientoDirectoValido(const Nivel& nivel, int origen, int destino,
+                            const EnemigosAplastados& enemigos = {});
+
+// Opciones de caminar, caida y salto para un par de apoyos. Se descartan
+// trayectorias con mas requisitos que otra que deja al menos los mismos
+// enemigos eliminados al llegar.
+std::vector<CondicionMovimiento> condicionesMovimiento(const Nivel& nivel, int origen, int destino);

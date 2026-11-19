@@ -28,7 +28,7 @@ void validarEstructura(const Nivel& nivel) {
     for (int x = 0; x < ANCHO_NIVEL; ++x) {
         const int y = nivel.alturaPlataforma[x];
         const Peligro peligro = nivel.peligro[x];
-        if (y < SIN_PLATAFORMA || y >= ALTO_NIVEL - 1) {
+        if (y < SIN_PLATAFORMA || y >= ALTO_NIVEL) {
             throw std::runtime_error("plataforma fuera del tablero en columna " + std::to_string(x));
         }
         if (peligro != Peligro::Ninguno && (y == SIN_PLATAFORMA || y + 1 >= ALTO_NIVEL)) {

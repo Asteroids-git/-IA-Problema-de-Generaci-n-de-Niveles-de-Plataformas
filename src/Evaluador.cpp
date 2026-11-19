@@ -1,5 +1,6 @@
 #include "Evaluador.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 Evaluacion evaluar(const Nivel& nivel, const Instancia& instancia) {
@@ -39,5 +40,23 @@ Evaluacion evaluar(const Nivel& nivel, const Instancia& instancia) {
     constexpr double LAMBDA = 0.5;
     resultado.costoTotal = resultado.errorCantidades +
                            LAMBDA * resultado.penalizacionLinealidad;
+    return resultado;
+}
+
+Evaluacion evaluarParaSA(const Nivel& nivel, const Instancia& instancia,
+                         const ResultadoAlcanzabilidad& ruta, const PesosSA& pesos) {
+    auto resultado = evaluar(nivel, instancia);
+    const int distancia = std::abs(nivel.columnaMeta - nivel.columnaInicio);
+    int faltan = distancia;
+    for (int col = 0; col < ANCHO_NIVEL; ++col) {
+        if (ruta.columnasAlcanzadas[col]) faltan = std::min(faltan, std::abs(nivel.columnaMeta - col));
+    }
+    const double avance = 1.0 - static_cast<double>(faltan) / std::max(1, distancia);
+    const double cobertura = static_cast<double>(ruta.apoyosAlcanzados) / ANCHO_NIVEL;
+    resultado.progreso = ruta.completable ? 1.0 : 0.9 * avance + 0.1 * cobertura;
+    resultado.costoTotal = pesos.cantidades * resultado.errorCantidades +
+                           pesos.linealidad * resultado.penalizacionLinealidad +
+                           pesos.incompletabilidad * !ruta.completable +
+                           pesos.progreso * (1.0 - resultado.progreso);
     return resultado;
 }

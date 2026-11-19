@@ -74,6 +74,22 @@ int main() {
         validarConteos(generarInicial({9, 150, 70, 78, ObjetivoLinealidad::Minimizar}, 7),
                        {9, 150, 70, 78, ObjetivoLinealidad::Minimizar});
 
+        {
+            const auto n = generarInicial(instancia, 42);
+            exigir(n.columnaInicio >= 0 && n.columnaInicio <= 4 &&
+                    n.columnaMeta >= 145 && n.columnaMeta <= 149 &&
+                    n.columnaMeta - n.columnaInicio >= 141,
+                    "inicio/meta en bandas extremas y separados");
+        }
+        {
+            Nivel n;
+            n.alturaPlataforma[0] = 0;
+            n.alturaPlataforma[149] = 0;
+            n.alturaPlataforma[50] = 15;
+            validarEstructura(n);
+            exigir(contarElementos(n).plataformas == 3,
+                    "fila superior admitida para plataformas sin personaje");
+        }
         std::cout << "Todas las " << pruebas << " verificaciones del generador superadas.\n";
         return 0;
     } catch (const std::exception& error) {
