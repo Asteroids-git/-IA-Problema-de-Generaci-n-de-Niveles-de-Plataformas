@@ -1,0 +1,8 @@
+/build/
+/salidas/
+/plataformas
+*.o
+*.exe
+*Zone.Identifier
+__pycache__/
+*.pyc
